@@ -88,7 +88,8 @@ echo "Running Claude investigation..."
 echo "Log file: $LOG_FILE"
 
 # Run Claude with the investigation prompt (skip permissions for automation)
-claude --dangerously-skip-permissions -p "
+# Note: Don't use -p flag as it prevents tool execution
+claude --dangerously-skip-permissions "
 You are investigating issue #$ISSUE in the $REPO repository.
 
 ## Instructions
