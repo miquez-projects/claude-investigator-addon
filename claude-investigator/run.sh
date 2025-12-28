@@ -43,6 +43,7 @@ else
 fi
 
 # Export environment for investigate.sh
+export HOME=/data
 export GITHUB_TOKEN
 export TAILSCALE_PHONE_IP
 export PHONE_ADB_PORT
