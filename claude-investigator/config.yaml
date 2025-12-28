@@ -13,6 +13,9 @@ url: "https://github.com/miquez/claude-investigator-addon"
 # No ingress - this is a headless add-on
 ingress: false
 
+# Use host network to access Tailscale VPN for ADB
+host_network: true
+
 options:
   github_token: ""
   tailscale_phone_ip: ""
