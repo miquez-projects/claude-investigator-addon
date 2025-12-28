@@ -29,8 +29,9 @@ fi
 
 cd "$REPO_PATH"
 echo "Pulling latest changes..."
-# Configure git to use gh for credentials
+# Configure git to use gh for credentials and mark repo as safe
 gh auth setup-git
+git config --global --add safe.directory "$REPO_PATH"
 git fetch origin
 git reset --hard origin/main || git reset --hard origin/master
 
