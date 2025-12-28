@@ -47,9 +47,10 @@ fi
 # Start Tailscale if auth key provided
 if [ -n "$TAILSCALE_AUTH_KEY" ]; then
     echo "Starting Tailscale..."
-    mkdir -p /data/tailscale
-    tailscaled --state=/data/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock &
-    sleep 2
+    mkdir -p /data/tailscale /var/run/tailscale
+    # Use userspace networking to avoid TUN permission issues in container
+    tailscaled --state=/data/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock --tun=userspace-networking &
+    sleep 3
     tailscale up --authkey="$TAILSCALE_AUTH_KEY" --hostname=claude-investigator --accept-routes
     echo "Tailscale connected"
     tailscale status

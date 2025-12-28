@@ -1,6 +1,6 @@
 name: "Claude Investigator"
 description: "Automated bug investigation with Claude Code CLI"
-version: "0.4.0"
+version: "0.4.1"
 slug: "claude_investigator"
 init: false
 
@@ -15,6 +15,12 @@ ingress: false
 
 # Use host network to access Tailscale VPN for ADB
 host_network: true
+
+# Required for Tailscale TUN interface
+privileged:
+  - NET_ADMIN
+  - NET_RAW
+  - SYS_MODULE
 
 options:
   claude_credentials: ""
