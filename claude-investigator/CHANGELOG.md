@@ -3,7 +3,7 @@
 ## 0.6.0
 
 - Feature: Add ttyd web terminal for interactive Claude OAuth authentication
-- Fix: Update Tailscale to 1.92.4 (installed directly instead of outdated Alpine package)
+- Fix: Update Tailscale to 1.92.3 (installed directly instead of outdated Alpine package)
 - Access web terminal via HA sidebar to run `claude` and complete OAuth login
 
 ## 0.5.0

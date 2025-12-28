@@ -28,11 +28,11 @@ RUN apk add --no-cache \
     done \
     && npm cache clean --force
 
-# Install Tailscale 1.92.4 directly (Alpine package is outdated)
+# Install Tailscale 1.92.3 directly (Alpine package is outdated)
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi && \
     if [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi && \
-    curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_1.92.4_${ARCH}.tgz" -o /tmp/tailscale.tgz && \
+    curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_1.92.3_${ARCH}.tgz" -o /tmp/tailscale.tgz && \
     tar -xzf /tmp/tailscale.tgz -C /tmp && \
     cp /tmp/tailscale_*/tailscale /usr/bin/ && \
     cp /tmp/tailscale_*/tailscaled /usr/sbin/ && \
