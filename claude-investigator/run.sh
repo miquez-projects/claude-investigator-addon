@@ -23,14 +23,26 @@ else
     DEFAULT_APP_PACKAGE="${DEFAULT_APP_PACKAGE:-com.fivethreeone.tracker}"
 fi
 
+# Start dbus and gnome-keyring for credential storage
+mkdir -p /run/dbus
+dbus-daemon --system --fork 2>/dev/null || true
+eval $(dbus-launch --sh-syntax)
+export DBUS_SESSION_BUS_ADDRESS
+
+# Initialize gnome-keyring with empty password
+mkdir -p /data/.local/share/keyrings
+echo -n "" | gnome-keyring-daemon --unlock --replace --components=secrets 2>/dev/null || true
+
 # Configure Claude Code credentials
 if [ -n "$CLAUDE_CREDENTIALS" ]; then
-    # Claude Code on Linux stores credentials via libsecret/keyring
-    # We'll use a credentials file approach instead
-    CLAUDE_CREDS_DIR="/data/.config/claude-code"
-    mkdir -p "$CLAUDE_CREDS_DIR"
-    echo "$CLAUDE_CREDENTIALS" > "$CLAUDE_CREDS_DIR/credentials.json"
-    chmod 600 "$CLAUDE_CREDS_DIR/credentials.json"
+    # Store credentials in gnome-keyring using secret-tool
+    echo "$CLAUDE_CREDENTIALS" | secret-tool store --label="Claude Code" service "Claude Code-credentials" account "credentials" 2>/dev/null || {
+        echo "WARNING: Could not store in keyring, trying file fallback"
+        CLAUDE_CREDS_DIR="/data/.config/claude-code"
+        mkdir -p "$CLAUDE_CREDS_DIR"
+        echo "$CLAUDE_CREDENTIALS" > "$CLAUDE_CREDS_DIR/credentials.json"
+        chmod 600 "$CLAUDE_CREDS_DIR/credentials.json"
+    }
     echo "Claude credentials configured"
 else
     echo "WARNING: No Claude credentials configured - investigations will fail"
@@ -70,7 +82,7 @@ export XDG_CONFIG_HOME=/data/.config
 export XDG_DATA_HOME=/data/.local/share
 export XDG_STATE_HOME=/data/.local/state
 export XDG_CACHE_HOME=/data/.cache
-mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"
+mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" /data/logs
 
 echo "Configuration:"
 echo "  - Phone IP: ${TAILSCALE_PHONE_IP:-not set}"
