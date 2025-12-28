@@ -67,8 +67,8 @@ LOG_FILE="/data/logs/investigation-${REPO//\//-}-$ISSUE-$(date +%Y%m%d-%H%M%S).l
 echo "Running Claude investigation..."
 echo "Log file: $LOG_FILE"
 
-# Run Claude with the investigation prompt
-claude --print "
+# Run Claude with the investigation prompt (skip permissions for automation)
+claude --dangerously-skip-permissions -p "
 You are investigating issue #$ISSUE in the $REPO repository.
 
 ## Instructions
