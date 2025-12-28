@@ -15,6 +15,8 @@ RUN apk add --no-cache \
     iptables \
     ttyd \
     socat \
+    postgresql-client \
+    sqlite \
     && npm config set registry https://registry.npmjs.org/ \
     && npm config set fetch-retries 3 \
     && npm config set fetch-retry-mintimeout 20000 \

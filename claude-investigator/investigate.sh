@@ -59,10 +59,12 @@ if [ -n "$PHONE_IP" ]; then
         ADB_CONTEXT="
 ## ADB Access (available via Tailscale proxy)
 Phone is connected at localhost:$LOCAL_ADB_PORT (proxied to $PHONE_IP:$PHONE_PORT). You can:
-- Pull logs: adb -s localhost:$LOCAL_ADB_PORT logcat -d -t 500 | grep -i '$APP_PACKAGE'
-- Check prefs: adb -s localhost:$LOCAL_ADB_PORT shell 'run-as $APP_PACKAGE cat /data/data/$APP_PACKAGE/shared_prefs/*.xml'
-- Get screenshot: adb -s localhost:$LOCAL_ADB_PORT exec-out screencap -p > /tmp/screen.png
-- List files: adb -s localhost:$LOCAL_ADB_PORT shell 'run-as $APP_PACKAGE ls -la /data/data/$APP_PACKAGE/'
+- Pull app logs: adb -s localhost:$LOCAL_ADB_PORT logcat -d -t 500 | grep -i '$APP_PACKAGE'
+- Check SharedPreferences: adb -s localhost:$LOCAL_ADB_PORT shell 'run-as $APP_PACKAGE cat /data/data/$APP_PACKAGE/shared_prefs/*.xml'
+- Take screenshot: adb -s localhost:$LOCAL_ADB_PORT exec-out screencap -p > /tmp/screen.png && echo 'Screenshot saved to /tmp/screen.png'
+- List app data: adb -s localhost:$LOCAL_ADB_PORT shell 'run-as $APP_PACKAGE ls -la /data/data/$APP_PACKAGE/'
+- Access Room database: adb -s localhost:$LOCAL_ADB_PORT shell 'run-as $APP_PACKAGE cat /data/data/$APP_PACKAGE/databases/*.db' > /tmp/app.db
+- Query Room DB (after pulling): sqlite3 /tmp/app.db 'SELECT * FROM tablename LIMIT 10;'
 "
         echo "ADB connected successfully via Tailscale proxy"
     else
@@ -107,6 +109,15 @@ You are investigating issue #$ISSUE in the $REPO repository.
 
 5. Form a hypothesis about the root cause based on your findings.
 $ADB_CONTEXT
+## Backend Database Access
+Production PostgreSQL (use sparingly, READ ONLY):
+- Connection: psql "postgresql://swarm_visualizer_user:1nlk2RVUmnpg2G2HO4QmaMhncX3ysg40@dpg-d41s9rer433s73cv4t00-a.frankfurt-postgres.render.com/swarm_visualizer?options=-c%20search_path=tracker,public"
+- Example queries:
+  - List tables: \dt
+  - Check user data: SELECT * FROM users LIMIT 5;
+  - Check workouts: SELECT * FROM workouts ORDER BY created_at DESC LIMIT 10;
+- IMPORTANT: This is a SHARED database. Only run SELECT queries. Never modify data.
+
 ## Output Format
 
 After investigation, post your findings as a comment on the issue using the gh CLI:
@@ -140,9 +151,9 @@ PROMPT_EOF
 chown -R claude:claude /data "$PROMPT_FILE"
 chmod 644 "$PROMPT_FILE"
 
-# Run Claude as non-root user (--dangerously-skip-permissions requires it)
-PROMPT=$(cat "$PROMPT_FILE")
-su -s /bin/bash -c "cd '$REPO_PATH' && HOME=/data claude --dangerously-skip-permissions \"\$PROMPT\"" claude 2>&1 | tee "$LOG_FILE"
+# Run Claude as non-root user with allowed tools via stdin
+# Using -p (print mode) with --allowedTools for headless execution
+cat "$PROMPT_FILE" | su -s /bin/bash -c "cd '$REPO_PATH' && HOME=/data claude -p --allowedTools 'Bash,Read,Write,Edit,Glob,Grep'" claude 2>&1 | tee "$LOG_FILE"
 
 rm -f "$PROMPT_FILE"
 
