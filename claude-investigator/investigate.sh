@@ -34,35 +34,45 @@ gh auth setup-git
 git fetch origin
 git reset --hard origin/main || git reset --hard origin/master
 
-# Check ADB availability (with debugging)
+# Check ADB availability via Tailscale nc proxy (userspace networking workaround)
 ADB_CONTEXT=""
+ADB_TARGET=""
 if [ -n "$PHONE_IP" ]; then
     echo "=== ADB Debug Info ==="
     echo "Target: $PHONE_IP:$PHONE_PORT"
     echo "Tailscale status:"
-    tailscale status 2>&1 | head -10 || echo "tailscale status failed"
-    echo "Checking connectivity to phone..."
-    tailscale ping -c 1 "$PHONE_IP" 2>&1 || echo "tailscale ping failed"
-    echo "Current ADB devices:"
-    adb devices 2>&1
-    echo "Attempting ADB connection (5s timeout)..."
-    ADB_OUTPUT=$(timeout 5 adb connect "$PHONE_IP:$PHONE_PORT" 2>&1) || ADB_OUTPUT="timeout"
+    tailscale status 2>&1 | head -5 || echo "tailscale status failed"
+
+    # Use tailscale nc as proxy (required for userspace networking)
+    LOCAL_ADB_PORT=15555
+    echo "Setting up Tailscale nc proxy on localhost:$LOCAL_ADB_PORT..."
+    pkill -f "socat.*$LOCAL_ADB_PORT" 2>/dev/null || true
+    socat TCP-LISTEN:$LOCAL_ADB_PORT,fork,reuseaddr EXEC:"tailscale nc $PHONE_IP $PHONE_PORT" &
+    SOCAT_PID=$!
+    sleep 2
+
+    echo "Attempting ADB connection via proxy..."
+    ADB_OUTPUT=$(timeout 10 adb connect "localhost:$LOCAL_ADB_PORT" 2>&1) || ADB_OUTPUT="timeout"
     echo "ADB connect output: $ADB_OUTPUT"
+
     if echo "$ADB_OUTPUT" | grep -qE "connected to|already connected"; then
         ADB_CONTEXT="
-## ADB Access (available)
-Phone is reachable at $PHONE_IP:$PHONE_PORT. You can:
-- Pull logs: adb -s $PHONE_IP:$PHONE_PORT logcat -d -t 500 | grep -i '$APP_PACKAGE'
-- Check prefs: adb -s $PHONE_IP:$PHONE_PORT shell 'run-as $APP_PACKAGE cat /data/data/$APP_PACKAGE/shared_prefs/<file>.xml'
-- Get screenshot: adb -s $PHONE_IP:$PHONE_PORT exec-out screencap -p > /tmp/screen.png
+## ADB Access (available via Tailscale proxy)
+Phone is connected at localhost:$LOCAL_ADB_PORT (proxied to $PHONE_IP:$PHONE_PORT). You can:
+- Pull logs: adb -s localhost:$LOCAL_ADB_PORT logcat -d -t 500 | grep -i '$APP_PACKAGE'
+- Check prefs: adb -s localhost:$LOCAL_ADB_PORT shell 'run-as $APP_PACKAGE cat /data/data/$APP_PACKAGE/shared_prefs/*.xml'
+- Get screenshot: adb -s localhost:$LOCAL_ADB_PORT exec-out screencap -p > /tmp/screen.png
+- List files: adb -s localhost:$LOCAL_ADB_PORT shell 'run-as $APP_PACKAGE ls -la /data/data/$APP_PACKAGE/'
 "
-        echo "ADB connected successfully"
+        echo "ADB connected successfully via Tailscale proxy"
     else
         ADB_CONTEXT="
 ## ADB Access (unavailable)
-Phone at $PHONE_IP:$PHONE_PORT not reachable. Investigate using codebase only.
+Phone at $PHONE_IP:$PHONE_PORT not reachable via Tailscale proxy. Investigate using codebase only.
 "
         echo "ADB connection failed - continuing without device access"
+        # Clean up socat if connection failed
+        kill $SOCAT_PID 2>/dev/null || true
     fi
 else
     ADB_CONTEXT="

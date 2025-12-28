@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- Feature: ADB now works via Tailscale nc proxy (fixes userspace networking limitation)
+- Add socat for TCP port forwarding through Tailscale
+- Fix: Use --dangerously-skip-permissions for automated Claude tool execution
+
 ## 0.6.0
 
 - Feature: Add ttyd web terminal for interactive Claude OAuth authentication

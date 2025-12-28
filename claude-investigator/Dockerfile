@@ -14,6 +14,7 @@ RUN apk add --no-cache \
     github-cli \
     iptables \
     ttyd \
+    socat \
     && npm config set registry https://registry.npmjs.org/ \
     && npm config set fetch-retries 3 \
     && npm config set fetch-retry-mintimeout 20000 \
