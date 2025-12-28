@@ -35,6 +35,7 @@ WORKDIR /data
 # Copy scripts
 COPY run.sh /run.sh
 COPY investigate.sh /investigate.sh
+COPY server.js /server.js
 RUN chmod +x /run.sh /investigate.sh
 
 # Default command keeps container running

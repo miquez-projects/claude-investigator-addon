@@ -60,7 +60,7 @@ echo "  - Phone IP: ${TAILSCALE_PHONE_IP:-not set}"
 echo "  - ADB Port: $PHONE_ADB_PORT"
 echo "  - App Package: $DEFAULT_APP_PACKAGE"
 echo ""
-echo "Claude Investigator ready. Waiting for investigation requests..."
+echo "Starting investigation server on port 8099..."
 
-# Keep container running
-tail -f /dev/null
+# Start the HTTP server
+exec node /server.js

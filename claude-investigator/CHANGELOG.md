@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Feature: Add HTTP API server on port 8099 for triggering investigations
+- Replace shell_command with rest_command approach
+
 ## 0.2.0
 
 - Feature: Add Claude OAuth credentials support for subscription-based auth
