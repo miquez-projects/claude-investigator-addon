@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.0
+
+- Feature: Queue-based investigation system - investigations run sequentially
+- Feature: Catchup scanning - every trigger also checks for uninvestigated open issues
+- Feature: Issue author notification - `@author` mentioned in investigation comments
+- Feature: Failure backoff - 3 consecutive failures → 30 min backoff; 6 → worker exits
+- Feature: New `/queue` endpoint to view queue status and investigated issues
+- Refactor: Split investigate.sh into entry point + investigate-issue.sh worker
+
 ## 0.7.0
 
 - Feature: ADB now works via Tailscale nc proxy (fixes userspace networking limitation)
