@@ -98,17 +98,18 @@ queue_pop() {
     jq '.[1:]' "$QUEUE_FILE" > "$tmp" && mv "$tmp" "$QUEUE_FILE"
 }
 
-# Mark issue as investigated
+# Mark issue as investigated with timestamp
 # Usage: mark_investigated "owner/repo" 42
 mark_investigated() {
     local repo="$1"
     local issue="$2"
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     queue_init
     local tmp="$(mktemp)"
-    jq --arg repo "$repo" --argjson issue "$issue" \
-        '.[$repo] = ((.[$repo] // []) + [$issue] | unique)' "$INVESTIGATED_FILE" > "$tmp" \
+    jq --arg repo "$repo" --arg issue "$issue" --arg ts "$timestamp" \
+        '.[$repo][$issue] = {investigatedAt: $ts}' "$INVESTIGATED_FILE" > "$tmp" \
         && mv "$tmp" "$INVESTIGATED_FILE"
-    echo "Marked $repo#$issue as investigated"
+    echo "Marked $repo#$issue as investigated at $timestamp"
 }
 
 # Get queue length
