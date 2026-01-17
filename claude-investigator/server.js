@@ -250,10 +250,100 @@ function handleInvestigate(repo, issue, res) {
     }));
 }
 
+// Handle GitHub webhook for issue comments (reinvestigation trigger)
+function handleIssueComment(repo, issue, commenter, res) {
+    initState();
+
+    // Ignore bot comments to prevent loops
+    if (commenter.endsWith('[bot]') || commenter === 'github-actions') {
+        console.log(`Ignoring bot comment from ${commenter} on ${repo}#${issue}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ignored', reason: 'bot_comment' }));
+        return;
+    }
+
+    // Only reinvestigate if issue was previously investigated
+    if (!isInvestigated(repo, issue)) {
+        console.log(`Issue ${repo}#${issue} not previously investigated, skipping comment trigger`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ignored', reason: 'not_previously_investigated' }));
+        return;
+    }
+
+    // Queue for reinvestigation
+    const added = addToQueue(repo, issue, true);
+    console.log(`Comment on ${repo}#${issue} by ${commenter}: ${added ? 'queued for reinvestigation' : 'already queued'}`);
+
+    // Start worker if needed
+    let workerStatus;
+    const queue = readJson(QUEUE_FILE, []);
+    if (isWorkerRunning()) {
+        workerStatus = 'already_running';
+    } else if (queue.length > 0) {
+        startWorker();
+        workerStatus = 'started';
+    } else {
+        workerStatus = 'not_needed';
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+        status: added ? 'queued' : 'already_queued',
+        repo,
+        issue,
+        trigger: 'comment',
+        commenter,
+        worker: workerStatus
+    }));
+}
+
 const server = http.createServer((req, res) => {
     const parsedUrl = url.parse(req.url, true);
 
-    if (req.method === 'POST' && parsedUrl.pathname === '/investigate') {
+    // GitHub webhook endpoint - handles raw GitHub payloads
+    if (req.method === 'POST' && parsedUrl.pathname === '/webhook') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+            try {
+                const payload = JSON.parse(body);
+                const event = req.headers['x-github-event'];
+                const repo = payload.repository?.full_name;
+
+                console.log(`Webhook received: event=${event}, repo=${repo}`);
+
+                if (event === 'issues' && payload.action === 'opened') {
+                    // New issue opened
+                    const issue = payload.issue?.number;
+                    if (repo && issue) {
+                        handleInvestigate(repo, issue, res);
+                    } else {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Missing repo or issue in payload' }));
+                    }
+                } else if (event === 'issue_comment' && payload.action === 'created') {
+                    // New comment on issue
+                    const issue = payload.issue?.number;
+                    const commenter = payload.comment?.user?.login || 'unknown';
+                    if (repo && issue) {
+                        handleIssueComment(repo, issue, commenter, res);
+                    } else {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Missing repo or issue in payload' }));
+                    }
+                } else {
+                    // Unhandled event type - acknowledge but ignore
+                    console.log(`Ignoring event: ${event}/${payload.action}`);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'ignored', event, action: payload.action }));
+                }
+            } catch (e) {
+                console.error('Webhook error:', e);
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: e.message }));
+            }
+        });
+    } else if (req.method === 'POST' && parsedUrl.pathname === '/investigate') {
         let body = '';
         req.on('data', chunk => { body += chunk; });
         req.on('end', () => {
