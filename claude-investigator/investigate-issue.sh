@@ -4,6 +4,7 @@ set -eo pipefail
 # Arguments
 REPO="$1"
 ISSUE="$2"
+REINVESTIGATION="${3:-false}"
 
 if [ -z "$REPO" ] || [ -z "$ISSUE" ]; then
     echo "Usage: investigate.sh <owner/repo> <issue_number>"
@@ -13,6 +14,22 @@ fi
 echo "=== Starting Investigation ==="
 echo "Repository: $REPO"
 echo "Issue: #$ISSUE"
+
+# Set up reinvestigation context if applicable
+if [ "$REINVESTIGATION" = "true" ]; then
+    REINVESTIGATION_CONTEXT="
+
+## REINVESTIGATION NOTICE
+This issue was previously investigated but has NEW ACTIVITY (comments or updates) since then.
+Focus on what's NEW since the last investigation:
+- Check recent comments for additional context from the issue author
+- Look for clarifying questions that were answered
+- Note any new information about the problem
+- Consider feedback on previous investigation findings
+- Your previous findings may already be in a comment on this issue"
+else
+    REINVESTIGATION_CONTEXT=""
+fi
 
 # Configuration from environment
 PHONE_IP="${TAILSCALE_PHONE_IP:-}"
@@ -167,6 +184,7 @@ You are investigating issue #$ISSUE in the $REPO repository.
 
    If ALL are true -> create a draft PR (see section below)
    If ANY are false -> comment with findings only, suggest manual next steps
+$REINVESTIGATION_CONTEXT
 $ADB_CONTEXT
 ## Backend Database Access
 Production PostgreSQL (use sparingly, READ ONLY):
