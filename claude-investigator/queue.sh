@@ -57,14 +57,16 @@ is_queued() {
 }
 
 # Add issue to queue (if not already queued or investigated)
-# Usage: queue_add "owner/repo" 42
+# Usage: queue_add "owner/repo" 42 [reinvestigation]
 # Returns: 0 if added, 1 if skipped
 queue_add() {
     local repo="$1"
     local issue="$2"
+    local reinvestigation="${3:-false}"
     queue_init
 
-    if is_investigated "$repo" "$issue"; then
+    # Skip if not reinvestigation and already investigated
+    if [ "$reinvestigation" != "true" ] && is_investigated "$repo" "$issue"; then
         echo "Issue $repo#$issue already investigated, skipping"
         return 1
     fi
@@ -76,10 +78,10 @@ queue_add() {
 
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     local tmp="$(mktemp)"
-    jq --arg repo "$repo" --argjson issue "$issue" --arg ts "$timestamp" \
-        '. + [{"repo": $repo, "issue": $issue, "added": $ts}]' "$QUEUE_FILE" > "$tmp" \
+    jq --arg repo "$repo" --argjson issue "$issue" --arg ts "$timestamp" --arg reinv "$reinvestigation" \
+        '. + [{"repo": $repo, "issue": $issue, "added": $ts, "reinvestigation": ($reinv == "true")}]' "$QUEUE_FILE" > "$tmp" \
         && mv "$tmp" "$QUEUE_FILE"
-    echo "Added $repo#$issue to queue"
+    echo "Added $repo#$issue to queue (reinvestigation: $reinvestigation)"
     return 0
 }
 
