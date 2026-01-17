@@ -1,6 +1,6 @@
 name: "Claude Investigator"
 description: "Automated bug investigation with Claude Code CLI"
-version: "0.10.0"
+version: "0.11.0"
 slug: "claude_investigator"
 init: false
 
@@ -8,7 +8,7 @@ arch:
   - aarch64
   - amd64
 
-url: "https://github.com/miquez/claude-investigator-addon"
+url: "https://github.com/miquez-projects/claude-investigator-addon"
 
 # Enable ingress for web terminal (one-time OAuth login)
 ingress: true
