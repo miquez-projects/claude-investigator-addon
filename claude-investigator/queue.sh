@@ -112,6 +112,17 @@ mark_investigated() {
     echo "Marked $repo#$issue as investigated at $timestamp"
 }
 
+# Get the timestamp when issue was last investigated
+# Usage: ts=$(get_investigated_time "owner/repo" 42)
+# Returns: ISO timestamp or empty if not investigated
+get_investigated_time() {
+    local repo="$1"
+    local issue="$2"
+    queue_init
+    jq -r --arg repo "$repo" --arg issue "$issue" \
+        '.[$repo][$issue].investigatedAt // empty' "$INVESTIGATED_FILE"
+}
+
 # Get queue length
 # Usage: len=$(queue_length)
 queue_length() {
