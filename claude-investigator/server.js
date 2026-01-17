@@ -122,15 +122,20 @@ function isQueued(repo, issue) {
 }
 
 // Add to queue
-function addToQueue(repo, issue) {
-    if (isInvestigated(repo, issue) || isQueued(repo, issue)) {
+function addToQueue(repo, issue, reinvestigation = false) {
+    if (isQueued(repo, issue)) {
+        return false;
+    }
+    // Skip if already investigated (unless this is a reinvestigation)
+    if (!reinvestigation && isInvestigated(repo, issue)) {
         return false;
     }
     const queue = readJson(QUEUE_FILE, []);
     queue.push({
         repo,
         issue,
-        added: new Date().toISOString()
+        added: new Date().toISOString(),
+        reinvestigation: reinvestigation
     });
     writeJson(QUEUE_FILE, queue);
     return true;
