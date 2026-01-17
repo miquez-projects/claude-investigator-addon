@@ -29,6 +29,7 @@ while true; do
 
     REPO=$(echo "$ITEM" | jq -r '.repo')
     ISSUE=$(echo "$ITEM" | jq -r '.issue')
+    REINVESTIGATION=$(echo "$ITEM" | jq -r '.reinvestigation // false')
 
     echo ""
     echo "=== Processing $REPO#$ISSUE ==="
@@ -36,7 +37,7 @@ while true; do
     echo "Consecutive failures: $CONSECUTIVE_FAILURES"
 
     # Run investigation
-    if /investigate-issue.sh "$REPO" "$ISSUE"; then
+    if /investigate-issue.sh "$REPO" "$ISSUE" "$REINVESTIGATION"; then
         echo "Investigation succeeded for $REPO#$ISSUE"
         mark_investigated "$REPO" "$ISSUE"
         queue_pop
