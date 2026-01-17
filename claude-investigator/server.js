@@ -17,6 +17,7 @@ function initState() {
     if (!fs.existsSync(INVESTIGATED_FILE)) {
         fs.writeFileSync(INVESTIGATED_FILE, '{}');
     }
+    migrateInvestigatedFormat();
 }
 
 // Read JSON file safely
@@ -33,10 +34,44 @@ function writeJson(file, data) {
     fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
+// Migrate old investigated format (array) to new format (object with timestamps)
+function migrateInvestigatedFormat() {
+    const investigated = readJson(INVESTIGATED_FILE, {});
+    let needsMigration = false;
+
+    for (const repo in investigated) {
+        if (Array.isArray(investigated[repo])) {
+            needsMigration = true;
+            break;
+        }
+    }
+
+    if (needsMigration) {
+        console.log('Migrating investigated.json to new format...');
+        const timestamp = new Date().toISOString();
+        const migrated = {};
+
+        for (const repo in investigated) {
+            if (Array.isArray(investigated[repo])) {
+                migrated[repo] = {};
+                for (const issue of investigated[repo]) {
+                    migrated[repo][issue.toString()] = { investigatedAt: timestamp };
+                }
+            } else {
+                migrated[repo] = investigated[repo];
+            }
+        }
+
+        writeJson(INVESTIGATED_FILE, migrated);
+        console.log('Migration complete');
+    }
+}
+
 // Check if issue is investigated
 function isInvestigated(repo, issue) {
     const investigated = readJson(INVESTIGATED_FILE, {});
-    return (investigated[repo] || []).includes(issue);
+    const repoData = investigated[repo];
+    return repoData && repoData[issue.toString()] !== undefined;
 }
 
 // Check if issue is in queue
