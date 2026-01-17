@@ -10,6 +10,30 @@ WORKER_LOCK="/data/worker.lock"
 queue_init() {
     [ -f "$QUEUE_FILE" ] || echo '[]' > "$QUEUE_FILE"
     [ -f "$INVESTIGATED_FILE" ] || echo '{}' > "$INVESTIGATED_FILE"
+    migrate_investigated_format
+}
+
+# Migrate old investigated format (array) to new format (object with timestamps)
+# Old: { "repo": [1, 2, 3] }
+# New: { "repo": { "1": { "investigatedAt": "..." }, "2": { ... } } }
+migrate_investigated_format() {
+    [ -f "$INVESTIGATED_FILE" ] || return 0
+
+    # Check if migration needed (if any value is an array)
+    if jq -e 'to_entries | map(select(.value | type == "array")) | length > 0' "$INVESTIGATED_FILE" > /dev/null 2>&1; then
+        echo "Migrating investigated.json to new format..."
+        local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        local tmp="$(mktemp)"
+        jq --arg ts "$timestamp" '
+          to_entries | map(
+            if (.value | type) == "array" then
+              .value = (.value | map({key: (. | tostring), value: {investigatedAt: $ts}}) | from_entries)
+            else .
+            end
+          ) | from_entries
+        ' "$INVESTIGATED_FILE" > "$tmp" && mv "$tmp" "$INVESTIGATED_FILE"
+        echo "Migration complete"
+    fi
 }
 
 # Check if issue is already investigated
@@ -18,8 +42,8 @@ is_investigated() {
     local repo="$1"
     local issue="$2"
     queue_init
-    jq -e --arg repo "$repo" --argjson issue "$issue" \
-        '.[$repo] // [] | index($issue) != null' "$INVESTIGATED_FILE" > /dev/null 2>&1
+    jq -e --arg repo "$repo" --arg issue "$issue" \
+        '.[$repo][$issue] != null' "$INVESTIGATED_FILE" > /dev/null 2>&1
 }
 
 # Check if issue is already in queue
