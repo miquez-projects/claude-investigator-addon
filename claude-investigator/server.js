@@ -191,15 +191,35 @@ function handleInvestigate(repo, issue, res) {
     const added = addToQueue(repo, issue);
     console.log(`Issue ${repo}#${issue}: ${added ? 'added to queue' : 'already queued/investigated'}`);
 
-    // Catchup scan
-    console.log(`Scanning for uninvestigated issues in ${repo}...`);
-    const openIssues = getOpenIssues(repo);
+    // Catchup scan with reinvestigation support
+    console.log(`Scanning for issues needing investigation in ${repo}...`);
+    const openIssues = getOpenIssuesWithUpdates(repo);
     let catchupCount = 0;
+    let reinvestigateCount = 0;
 
-    for (const issueNum of openIssues) {
-        if (addToQueue(repo, issueNum)) {
-            console.log(`Catchup: added ${repo}#${issueNum}`);
-            catchupCount++;
+    for (const issueData of openIssues) {
+        const issueNum = issueData.number;
+
+        if (!isInvestigated(repo, issueNum)) {
+            // New issue, never investigated
+            if (addToQueue(repo, issueNum)) {
+                console.log(`Catchup: added ${repo}#${issueNum} (new)`);
+                catchupCount++;
+            }
+        } else {
+            // Already investigated - check for new activity
+            const investigatedAt = getInvestigatedTime(repo, issueNum);
+            if (investigatedAt) {
+                const issueUpdatedAt = new Date(issueData.updatedAt);
+                const lastInvestigated = new Date(investigatedAt);
+
+                if (issueUpdatedAt > lastInvestigated) {
+                    if (addToQueue(repo, issueNum, true)) {
+                        console.log(`Reinvestigate: added ${repo}#${issueNum} (updated since ${investigatedAt})`);
+                        reinvestigateCount++;
+                    }
+                }
+            }
         }
     }
 
@@ -225,6 +245,7 @@ function handleInvestigate(repo, issue, res) {
         issue,
         queue_length: queue.length,
         catchup_added: catchupCount,
+        reinvestigate_added: reinvestigateCount,
         worker: workerStatus
     }));
 }
