@@ -74,6 +74,47 @@ function isInvestigated(repo, issue) {
     return repoData && repoData[issue.toString()] !== undefined;
 }
 
+// Get timestamp when issue was last investigated
+function getInvestigatedTime(repo, issue) {
+    const investigated = readJson(INVESTIGATED_FILE, {});
+    const repoData = investigated[repo];
+    if (repoData && repoData[issue.toString()]) {
+        return repoData[issue.toString()].investigatedAt;
+    }
+    return null;
+}
+
+// Get open issues with their updatedAt timestamps
+function getOpenIssuesWithUpdates(repo) {
+    try {
+        const output = execSync(
+            `gh issue list --repo "${repo}" --state open --json number,updatedAt`,
+            { encoding: 'utf8', timeout: 30000 }
+        );
+        return JSON.parse(output);
+    } catch (e) {
+        console.error(`Failed to fetch open issues for ${repo}:`, e.message);
+        return [];
+    }
+}
+
+// Check if issue has new activity since last investigation
+function hasNewActivity(repo, issue, investigatedAt) {
+    try {
+        const output = execSync(
+            `gh issue view ${issue} --repo "${repo}" --json updatedAt`,
+            { encoding: 'utf8', timeout: 15000 }
+        );
+        const data = JSON.parse(output);
+        const issueUpdatedAt = new Date(data.updatedAt);
+        const lastInvestigated = new Date(investigatedAt);
+        return issueUpdatedAt > lastInvestigated;
+    } catch (e) {
+        console.error(`Failed to check activity for ${repo}#${issue}:`, e.message);
+        return false;
+    }
+}
+
 // Check if issue is in queue
 function isQueued(repo, issue) {
     const queue = readJson(QUEUE_FILE, []);
